@@ -1,0 +1,971 @@
+<Shapes xmlns="http://www.evolus.vn/Namespace/Pencil"
+        xmlns:p="http://www.evolus.vn/Namespace/Pencil"
+        xmlns:svg="http://www.w3.org/2000/svg"
+        xmlns:xlink="http://www.w3.org/1999/xlink"
+        id="pensil.odoo.8"
+        displayName="Odoo 8"
+        description="UI components for Odoo v8"
+        author="Francesco Apruzzese "
+        url="https://github.com/OpenCode">
+
+<Properties>
+    <PropertyGroup name="Text">
+        <Property name="textFont" type="Font" displayName="Default Font">"Helvetica Neue", Helvetica, Arial, sans-serif|400|normal|13px</Property>
+        <Property name="textColor" type="Color" displayName="Default Text Color">#333333ff</Property>
+    </PropertyGroup>
+    <PropertyGroup name="Line">
+        <Property name="strokeColor" type="Color" displayName="Default Line Color">#ccccccff</Property>
+        <Property name="strokeStyle" type="StrokeStyle" displayName="Default Line Style">1|</Property>
+    </PropertyGroup>
+    <PropertyGroup name="Colors: Grays">
+        <Property name="neutral" type="Color" displayName="Neutral">#ffffffff</Property>
+        <Property name="grayDarker" type="Color" displayName="gray-darker">#222222ff</Property>
+        <Property name="grayDark" type="Color" displayName="gray-dark">#050505ff</Property>
+    </PropertyGroup>
+    <PropertyGroup name="Colors: Grays (cont.)">
+        <Property name="gray" type="Color" displayName="gray">#545454ff</Property>
+        <Property name="grayLight" type="Color" displayName="gray-light">#777777ff</Property>
+        <Property name="grayLighter" type="Color" displayName="gray-lighter">#eeeeeeff</Property>
+    </PropertyGroup>
+    <PropertyGroup name="Colors: Brand">
+        <Property name="brandPrimary" type="Color" displayName="brand-primary">#337ab7ff</Property>
+        <Property name="brandSuccess" type="Color" displayName="brand-success">#5cb85cff</Property>
+        <Property name="brandInfo" type="Color" displayName="brand-info">#5bc0deff</Property>
+    </PropertyGroup>
+    <PropertyGroup name="Colors: Brand (cont.)">
+        <Property name="brandWarning" type="Color" displayName="brand-warning">#f0ad4eff</Property>
+        <Property name="brandDanger" type="Color" displayName="brand-danger">#d9534fff</Property>
+    </PropertyGroup>
+</Properties>
+
+<Script>
+    <![CDATA[
+    /**
+     * Takes RGB values (each between 0 and 255) and returns the corresponding HSL values (H between 0 and 360, S and L each between 0 and 100).
+     * Based on http://stackoverflow.com/a/9493060
+     */
+    collection.rgbToHsl = function(r, g, b) {
+        var max, min, h, s, l;
+
+        r = r / 255;
+        g = g / 255;
+        b = b / 255;
+
+        max = Math.max(r, g, b);
+        min = Math.min(r, g, b);
+
+        l = (min + max) / 2;
+
+        diff = max - min;
+
+        if (diff == 0) {
+            s = 0;
+            h = 0;
+        } else {
+            if(l > 0.5) {
+                s = (diff) / (2 - min - max)
+            } else {
+                s = diff / (max + min)
+            }
+
+            switch(max) {
+                case r:
+                    h = (g - b) / diff + (g < b ? 6 : 0);
+                    break;
+                case g:
+                    h = (b - r) / diff + 2;
+                    break;
+                case b:
+                    h = (r - g) / diff + 4;
+                    break;
+            }
+        }
+
+        return {h: Math.round(h * 60), s: Math.round(s * 100), l: Math.round(l * 100)};
+    }
+
+    /**
+     * Takes HSL values (H between 0 and 360, S and L each between 0 and 100) and returns the corresponding RGB values (each between 0 and 255)
+     * Based on pseudo-code in the W3 Color Model document (http://www.w3.org/TR/2011/REC-css3-color-20110607/#hsl-color)
+     */
+    collection.hslToRgb = function (h, s, l) {
+        var m1, m2, m3, r, g, b;
+
+        h = h / 360;
+        s = s / 100;
+        l = l / 100;
+
+        m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
+
+        m1 = l * 2 - m2;
+
+        r = collection.hueToRgb(m1, m2, h + 1/3);
+        g = collection.hueToRgb(m1, m2, h);
+        b = collection.hueToRgb(m1, m2, h - 1/3);
+
+        return {r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255)};
+    }
+
+    collection.hueToRgb = function (m1, m2, h) {
+        if(h < 0) {
+            h = h + 1;
+        } else if(h > 1) {
+            h = h - 1;
+        }
+
+        if(h*6 < 1) {
+            return m1 + (m2 - m1) * h * 6;
+        } else if(h*2 < 1) {
+            return m2;
+        } else if(h*3 < 2) {
+            return m1 + (m2 - m1) * (2/3 - h) * 6
+        }
+
+        return m1;
+    }
+
+    /**
+     * Darkens the given color by the given amount (a number between 0 and 100)
+     */
+    collection.darken = function (color, amount) {
+        return collection._adjustLightness(color, -amount);
+    }
+
+    /**
+     * Lightens the given color by the given amount (a number between 0 and 100)
+     */
+    collection.lighten = function (color, amount) {
+        return collection._adjustLightness(color, amount);
+    }
+
+    /**
+     * Offsets the hue of a color by the given amount (in degrees)
+     */
+    collection.spin = function (color, amount) {
+        var hsl = collection.rgbToHsl(color.r, color.g, color.b);
+        newH = (hsl.h + amount) % 360;
+        hsl.h = (newH >= 0 ? newH : newH + 360);
+
+        rgb = collection.hslToRgb(hsl.h, hsl.s, hsl.l);
+
+        return Color.fromString("rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + color.a + ")");
+    }
+
+    /**
+     * Changes the lightness of the given color by the given amount (a number between -100 and 100)
+     */
+    collection._adjustLightness = function (color, amount) {
+        var hsl = collection.rgbToHsl(color.r, color.g, color.b);
+
+        hsl.l = Math.min(Math.max(hsl.l + amount, 0), 100);
+        rgb = collection.hslToRgb(hsl.h, hsl.s, hsl.l);
+
+        return Color.fromString("rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + color.a + ")");
+    }
+
+    collection.setCssTextAlignment = function(css, h, v) {
+        switch (parseInt(h, 10)) {
+            case 0:
+                css.set("text-align", "left");
+                break;
+            case 1:
+                css.set("text-align", "center");
+                break;
+            case 2:
+                css.set("text-align", "right");
+                break;
+        }
+
+        switch (parseInt(v, 10)) {
+            case 0:
+                css.set("vertical-align", "top");
+                break;
+            case 1:
+                css.set("vertical-align", "middle");
+                break;
+            case 2:
+                css.set("vertical-align", "bottom");
+                break;
+        }
+    }
+
+    ]]>
+</Script>
+
+<Shape id="button" displayName="Button" icon="Icons/button_standard.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">60,25</Property>
+            <Property name="smartColor" displayName="Automatic border color" type="Bool">true</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[Button]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$textColor</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">1,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="dropdown" displayName="Dropdown type" type="Enum"
+                p:enumValues="['none|None', 'dropdown|Dropdown', 'split|Split dropdown']">none</Property>
+            <Property name="dropdownDirection" displayName="Dropdown direction" type="Enum"
+                p:enumValues="['1|Down', '-1|Up']">1</Property>
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle', 'top|Top', 'bottom|Bottom']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <D>
+                var tl, tr, br, bl; // Radius of each corner
+                var r = $radius.x;
+                switch ($position.value) {
+                    case "middle":
+                        tl = tr = br = bl = 0;
+                        break;
+                    case "left":
+                        tl = bl = r;
+                        tr = br = 0;
+                        break;
+                    case "right":
+                        tr = br = r;
+                        tl = bl =0;
+                        break;
+                    case "top":
+                        tl = tr = r;
+                        bl = br = 0;
+                        break;
+                    case "bottom":
+                        tl = tr = 0;
+                        bl = br = r;
+                        break;
+                    default:
+                        tl = tr = br =bl = r;
+                        break;
+                }
+
+                "M " + tl + ",0 L " + ($box.w - tr) + ",0 a " + tr + "," + tr + " 0 0,1 " + tr + "," + tr
+                + "l 0," + ($box.h - tr - br) + " a " + br + "," + br + " 0 0,1 " + -br + "," + br
+                + "L " + bl + "," + $box.h + " a " + bl + "," + bl + " 0 0,1 " + -bl + "," + -bl
+                + "L 0," + tl + " a " + tl + "," + tl + " 0 0,1 " + tl + "," + -tl + "Z"
+            </D>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$smartColor.value ? collection.darken($fillColor, 5) : $strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>
+                    var width = $box.w;
+
+                    switch ($dropdown.value) {
+                        case "split":
+                            width = $box.w - 26; break;
+                        case "dropdown":
+                            width = $box.w - 12; break;
+                    }
+
+                    Bound.fromBox(new Dimension(width, $box.h), 12, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+        <For ref="arrow">
+            <Visibility>$dropdown.value != "none"</Visibility>
+            <D>"M " + ($box.w - ($dropdown.value == "split" ? 17 : 20)) + "," + (($box.h / 2) + ($dropdownDirection.value * -2)) + " l 8,0 l -4," + ($dropdownDirection.value * 4) + " Z"</D>
+            <Fill>$textColor</Fill>
+        </For>
+        <For ref="split">
+            <Visibility>$dropdown.value == "split"</Visibility>
+            <D>"M" + ($box.w - 26) + ",0 l 0," + $box.h</D>
+            <StrokeColor>$smartColor.value ? collection.darken($fillColor, 5) : $strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <path id="bg" />
+        <text id="text"/>
+        <path id="arrow" style="opacity:1;fill:#000000;fill-opacity:1;stroke:none" />
+        <path id="split" style="opacity:1;fill:#000000;fill-opacity:1;stroke:none" />
+    </p:Content>
+</Shape>
+
+<Shortcut displayName="Button (standard)" icon="Icons/button_standard.png" to="button">
+    <PropertyValue name="fillColor">#e3e3e3</PropertyValue>
+    <PropertyValue name="textColor">#4c4c4c</PropertyValue>
+</Shortcut>
+
+<Shortcut displayName="Button (highlight)" icon="Icons/button_highlight.png" to="button">
+    <PropertyValue name="fillColor">#c02c2c</PropertyValue>
+    <PropertyValue name="textColor">#FFFFFF</PropertyValue>
+</Shortcut>
+
+
+<Shape id="char" displayName="Char" icon="Icons/char.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">200,25</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="activeColor" displayName="Active Color" type="Color">#66afe9ff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 6, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+                <text id="text"/>
+        </p:Content>
+</Shape>
+
+
+<Shape id="date" displayName="Date" icon="Icons/date.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">200,25</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[2000-01-01]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="activeColor" displayName="Active Color" type="Color">#66afe9ff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 6, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+        <For ref="calendar">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 20) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w - 25</Arg>
+            </Attr>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+                <text id="text"/>
+                <image id="calendar" width="19" height="19" x="10" y="6" 
+                       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABe0lEQVQ4T6WTPW4UQRCFv+qdxfxJRIgV2eTcgHNA4NxXIHFMyBnIuYkDhATJJt5ZZFkghBNg1j3T3fUI2mPAuxgJv+ipu+t1fSWVIW6kBuDVmy/y4JjPkNWLMTsxizgafSzE5PTDjCGKTXHGQYzZa4AHZ7F4RMGRGzk7OYmUjZjFgySGUhgHJyfjvIgxF96+O64BuPH501fcRBCk5Gxi4NtY+BEL/cboo+ijOC8J2R7BE/JNDVjcWfP0ycMtvrZtAei67op/zPr0jGcHr2tAynmreHo86aXV4eyvVnRdx/LkO5hPAQNt2+74qb0sPpT+8MuT95ggANy9fY//kaRfCFO7v7c9+f3VagsBoLGmdjAhQB3cLn8oXWJMZwXVgPyXIV6nPopMqQilpGsRdvmYxC1Z7cDU/BNhl0q42AVTYn16xugzPiw/EpMYsnF8tCImMWYxXqFs9u4z84sA2ZznBy+oHkwBU0ZhDioEgVsgKJBtZM4MSRQMu+k6/wRoGgR4o7Gm7QAAAABJRU5ErkJggg==" />
+    </p:Content>
+</Shape>
+
+<Shape id="datetime" displayName="Datetime" icon="Icons/datetime.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">200,25</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[2000-01-01 12:00:00]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="activeColor" displayName="Active Color" type="Color">#66afe9ff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 6, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+        <For ref="calendar">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 20) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w - 25</Arg>
+            </Attr>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+                <text id="text"/>
+                <image id="calendar" width="19" height="19" x="10" y="6" 
+                       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABe0lEQVQ4T6WTPW4UQRCFv+qdxfxJRIgV2eTcgHNA4NxXIHFMyBnIuYkDhATJJt5ZZFkghBNg1j3T3fUI2mPAuxgJv+ipu+t1fSWVIW6kBuDVmy/y4JjPkNWLMTsxizgafSzE5PTDjCGKTXHGQYzZa4AHZ7F4RMGRGzk7OYmUjZjFgySGUhgHJyfjvIgxF96+O64BuPH501fcRBCk5Gxi4NtY+BEL/cboo+ijOC8J2R7BE/JNDVjcWfP0ycMtvrZtAei67op/zPr0jGcHr2tAynmreHo86aXV4eyvVnRdx/LkO5hPAQNt2+74qb0sPpT+8MuT95ggANy9fY//kaRfCFO7v7c9+f3VagsBoLGmdjAhQB3cLn8oXWJMZwXVgPyXIV6nPopMqQilpGsRdvmYxC1Z7cDU/BNhl0q42AVTYn16xugzPiw/EpMYsnF8tCImMWYxXqFs9u4z84sA2ZznBy+oHkwBU0ZhDioEgVsgKJBtZM4MSRQMu+k6/wRoGgR4o7Gm7QAAAABJRU5ErkJggg==" />
+    </p:Content>
+</Shape>
+
+<Shape id="boolean" displayName="Boolean" icon="Icons/boolean.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">100,25</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[Boolean]]></Property>
+            <Property name="textFont" displayName="Text Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color">#ffffff</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Check Mark">
+            <Property name="checkColor" displayName="Check Color" type="Color"><E>$$gray</E></Property>
+            <Property name="checked" displayName="Checked" type="Bool">false</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <TextContent>$textContent</TextContent>
+            <BoxFit>
+                <Arg>new Bound(0, 0, $box.w - 22, $box.h)</Arg>
+                <Arg>$textAlign</Arg>
+            </BoxFit>
+        </For>
+        <For ref="box">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 16) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w - 22</Arg>
+            </Attr>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="tick">
+            <Visibility>$checked</Visibility>
+            <Transform>[translate($box.w-20, ($box.h - 9) / 2)]</Transform>
+            <Fill>$checkColor</Fill>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+                <text id="text"/>
+        <rect id="box" width="16px" height="16px" rx="2px" ry="2px" />
+        <path
+            id="tick"
+            d="M 10,0 4,6.0137 1.333,3.3478 0,4.6778 l 4,4 7.336,-7.3466 z" />
+    </p:Content>
+</Shape>
+
+<Shape id="m2o" displayName="Many2one" icon="Icons/m2o.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">180,25</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[Other Record]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="activeColor" displayName="Active Color" type="Color">#66afe9ff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 6, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+        <For ref="arrow">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 20) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w - 22</Arg>
+            </Attr>
+        </For>
+        <For ref="resource">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 20) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w + 2</Arg>
+            </Attr>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+                <text id="text"/>
+        <image id="arrow" width="19" height="19" x="10" y="6" 
+                       xlink:href=" data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAARElEQVR42u3SwQkAIAxDUTfL4NLVjO21UEIRbxX+9RnBRfKpAQrAz/aYsg4A7yQANaBXmHiCXAEB1CvS7W0A0fzEz8AFUALHO8d0MPMAAAAASUVORK5CYII=" />
+                <image id="resource" width="19" height="19" x="10" y="6" 
+                       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAASCAYAAABfJS4tAAABMklEQVQ4jdXUwUvDMBQG8P3fCVSosIMeBHvYoQcPHiY0lEllFGQQWAs9TBilgoI9FIwQ0EEpHQuFz8vU1WxrGPPgg+9Skh+PJK89/FH1Dt6p3nHnvUCoo8MS1xYDPUswk00HXBYYufdwLn8yuErxXO6BCQMlIVhWYbP5FqyepuuF61gcyUY3Sr6Ce1M4fb+9jjBQ4sMJ3lBuhzkoYXCS5a/2GoiI41TD9Lizyhwus9gA9eFGC9TGHdcSNzYDJbcYDFMkmYSQFT5kAfcbHYNl7WY64XrOcWJNwItV+3S+Ls/miETHq9DhBvlwglG+0jZCSTD3AY/bXkw3vESeLbBjBnZ+N4ANSlWYezG4PCrcQAQBKBkjNIFpP2xN376cW8wAFikuDIZAix1rl3j4T6ij/h/8CQGBpoQc6YXzAAAAAElFTkSuQmCC" />
+    </p:Content>
+</Shape>
+
+<Shape id="textfield" displayName="Text" icon="Icons/text.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">400,100</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="activeColor" displayName="Active Color" type="Color">#66afe9ff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 6, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+                <text id="text"/>
+        </p:Content>
+</Shape>
+
+<Shape id="x2m" displayName="X2Many" icon="Icons/x2m.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">500,135</Property>
+            <Property name="condensed" displayName="Condensed" type="Bool">false</Property>
+        </PropertyGroup>
+
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Background Color" type="Color">#ffffff00</Property>
+            <Property name="stripeColor" displayName="Stripe Color" type="Color">#f9f9f9ff</Property>
+            <Property name="striped" displayName="Striped Rows" type="Bool">false</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color">#ddddddff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+            <Property name="bordered" displayName="Border All" type="Bool">false</Property>
+            <Property name="topBorder" displayName="Border Top" type="Bool">false</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="contentText" displayName="Text Content" type="PlainText" p:editInfo="({targetName: 'content', bound: Bound.fromBox($box, 0, 5), font: $textFont, align: new Alignment(0, 0), multi: true})"><![CDATA[Name | Date | Amount
+Example 1 | 2017-01-01 | 12.89
+Example 2 | 2017-05-06 | 100.98
+Add a row |  | ]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$textColor</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+            <Property name="header" displayName="Header" type="Bool">true</Property>
+        </PropertyGroup>
+    </Properties>
+
+    <Behaviors>
+        <For ref="bg">
+            <Bound>Bound.fromBox($box)</Bound>
+            <Fill>$fillColor</Fill>
+        </For>
+
+        <For ref="content">
+            <Bound>new Bound(0, 0, $box.w, $box.h)</Bound>
+        </For>
+
+        <For ref="table">
+            <Color>$textColor</Color>
+            <Font>$textFont</Font>
+
+            <CustomStyle>
+                <Arg>"width"</Arg>
+                <Arg>$box.w + "px"</Arg>
+            </CustomStyle>
+            <CustomStyle>
+                <Arg>"height"</Arg>
+                <Arg>$box.h + "px"</Arg>
+            </CustomStyle>
+            <CustomStyle>
+                <Arg>"border-collapse"</Arg>
+                <Arg>"collapse"</Arg>
+            </CustomStyle>
+
+            <DomContent>
+                <![CDATA[
+
+                var rows = $contentText.value.split(/[\r\n]+/);
+
+                var specs = [];
+                var header = false;
+
+                for (var i = 0; i < rows.length; i++) {
+                    var columns = rows[i].split(/\|/);
+
+                    header = (i == 0) && $header.value;
+                    var rowCss = new CSS();
+
+                    var row = {
+                        _name: "tr",
+                        _uri: "http://www.w3.org/1999/xhtml",
+                        style: rowCss,
+                        _children: []
+                    };
+
+                    if ($striped.value && i % 2 != 0) {
+                        rowCss.set("background", $stripeColor.toRGBString());
+                    }
+
+                    for (var j = 0; j < columns.length; j++) {
+                        var css = new CSS();
+                        var text = columns[j];
+
+                        css.set("padding", $condensed.value ? "4px" : "8px");
+                        collection.setCssTextAlignment(css, $textAlign.h, $textAlign.v);
+
+                        if ($bordered.value) {
+                            css.set("border", $strokeStyle.w + "px solid " + $strokeColor.toRGBString());
+                        }
+
+                        if (header) {
+                            css.set("border-bottom", $strokeStyle.w * 2 + "px solid " + $strokeColor.toRGBString());
+                            css.set("font-weight", "bold");
+                        }
+
+                        if (i > 0 || $topBorder.value) {
+                            css.set("border-top", $strokeStyle.w + "px solid " + $strokeColor.toRGBString());
+                        }
+
+                        row._children.push({
+                            _name: header ? "th" : "td",
+                            _uri: "http://www.w3.org/1999/xhtml",
+                            _text: text,
+                            style: css
+                        });
+                    }
+
+                    specs.push(row);
+                }
+
+                Dom.newDOMFragment(specs);
+                ]]>
+            </DomContent>
+
+            <Color>$textColor</Color>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+
+        <foreignObject id="content">
+            <div xmlns="http://www.w3.org/1999/xhtml" >
+                <table id="table">
+                </table>
+            </div>
+        </foreignObject>
+    </p:Content>
+</Shape>
+
+
+<Shape id="label" displayName="Label" icon="Icons/label.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">100,25</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[Label]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font">"Lucida Grande", Helvetica, Verdana, Arial, sans-serif|bold|normal|13px</Property>
+            <Property name="textColor" displayName="Text Color" type="Color">#4c4c4c</Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color">#ffffff</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 0, 0)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+        <text id="text"/>
+    </p:Content>
+</Shape>
+
+<Shape id="separator" displayName="Separator" icon="Icons/separator.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">100,25</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[Separator]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font">"Lucida Grande", Helvetica, Verdana, Arial, sans-serif|bold|normal|20px</Property>
+            <Property name="textColor" displayName="Text Color" type="Color">#7C7BAD</Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color">#ffffff</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 0, 0)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+        <text id="text"/>
+    </p:Content>
+</Shape>
+
+<Shape id="page" displayName="Notebook Page (Selected)" icon="Icons/page.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension">100,30</Property>
+            <Property name="selected" displayName="Selected" type="Bool">true</Property>
+            <Property name="dropdown" displayName="Dropdown" type="Bool">false</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h" p:noScale="true">4,0</Property>
+            <Property name="leftLine" displayName="Left Underline" type="Handle" p:lockY="true" p:maxX="0" p:disabled="!$selected.value">-50,30</Property>
+            <Property name="rightLine" displayName="Right Underline" type="Handle" p:lockY="true" p:minX="$box.w" p:disabled="!$selected.value">148,30</Property>
+            <Property name="dropdownDirection" displayName="Dropdown direction" type="Enum"
+                p:enumValues="['1|Down', '-1|Up']">1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"><![CDATA[Page]]></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$textColor</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">1,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color">#ffffff00</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <D>
+                var tl, tr; // Radius of top corners
+                tl = tr = $radius.x;
+
+                "M " + ($selected.value ? + $leftLine.x : "0") + "," + $box.h
+                + "L 0," + $box.h + " L 0," + tl + " a " + tl + "," + tl + " 0 0,1 " + tl + "," + -tl
+                + "L " + ($box.w - tr) + ",0 a " + tr + "," + tr + " 0 0,1 " + tr + "," + tr
+                + "l 0," + ($box.h - tr)
+                + ($selected.value ? "L " + $rightLine.x + "," + $box.h : "")
+            </D>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>
+                    var width = $dropdown.value? $box.w - 14 : $box.w;
+                    Bound.fromBox(new Dimension(width, $box.h), 15, 10)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+        <For ref="arrow">
+            <Visibility>$dropdown.value</Visibility>
+            <D>"M " + ($box.w - 20) + "," + (($box.h / 2) + ($dropdownDirection.value * -2)) + " l 8,0 l -4," + ($dropdownDirection.value * 4) + " Z"</D>
+            <Fill>$textColor</Fill>
+        </For>
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil"    xmlns="http://www.w3.org/2000/svg">
+        <path id="bg" />
+        <text id="text"/>
+        <path id="arrow" style="opacity:1;fill:#000000;fill-opacity:1;stroke:none" />
+    </p:Content>
+</Shape>
+
+<Shortcut displayName="Notebook Page (Unselected)" icon="Icons/page_unselected.png" to="page">
+    <PropertyValue name="strokeStyle">0|</PropertyValue>
+    <PropertyValue name="selected">false</PropertyValue>
+    <PropertyValue name="textColor">#808080</PropertyValue>
+</Shortcut>
+
+</Shapes>
