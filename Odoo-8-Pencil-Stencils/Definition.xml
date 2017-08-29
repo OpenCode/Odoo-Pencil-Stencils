@@ -364,7 +364,6 @@
         </p:Content>
 </Shape>
 
-
 <Shape id="date" displayName="Date" icon="Icons/date.png">
     <Properties>
         <PropertyGroup>
@@ -627,10 +626,105 @@
                 <text id="text"/>
         <image id="arrow" width="19" height="19" x="10" y="6" 
                        xlink:href=" data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAARElEQVR42u3SwQkAIAxDUTfL4NLVjO21UEIRbxX+9RnBRfKpAQrAz/aYsg4A7yQANaBXmHiCXAEB1CvS7W0A0fzEz8AFUALHO8d0MPMAAAAASUVORK5CYII=" />
-                <image id="resource" width="19" height="19" x="10" y="6" 
-                       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAASCAYAAABfJS4tAAABMklEQVQ4jdXUwUvDMBQG8P3fCVSosIMeBHvYoQcPHiY0lEllFGQQWAs9TBilgoI9FIwQ0EEpHQuFz8vU1WxrGPPgg+9Skh+PJK89/FH1Dt6p3nHnvUCoo8MS1xYDPUswk00HXBYYufdwLn8yuErxXO6BCQMlIVhWYbP5FqyepuuF61gcyUY3Sr6Ce1M4fb+9jjBQ4sMJ3lBuhzkoYXCS5a/2GoiI41TD9Lizyhwus9gA9eFGC9TGHdcSNzYDJbcYDFMkmYSQFT5kAfcbHYNl7WY64XrOcWJNwItV+3S+Ls/miETHq9DhBvlwglG+0jZCSTD3AY/bXkw3vESeLbBjBnZ+N4ANSlWYezG4PCrcQAQBKBkjNIFpP2xN376cW8wAFikuDIZAix1rl3j4T6ij/h/8CQGBpoQc6YXzAAAAAElFTkSuQmCC" />
+        <image id="resource" width="19" height="19" x="10" y="6" 
+               xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAASCAYAAABfJS4tAAABMklEQVQ4jdXUwUvDMBQG8P3fCVSosIMeBHvYoQcPHiY0lEllFGQQWAs9TBilgoI9FIwQ0EEpHQuFz8vU1WxrGPPgg+9Skh+PJK89/FH1Dt6p3nHnvUCoo8MS1xYDPUswk00HXBYYufdwLn8yuErxXO6BCQMlIVhWYbP5FqyepuuF61gcyUY3Sr6Ce1M4fb+9jjBQ4sMJ3lBuhzkoYXCS5a/2GoiI41TD9Lizyhwus9gA9eFGC9TGHdcSNzYDJbcYDFMkmYSQFT5kAfcbHYNl7WY64XrOcWJNwItV+3S+Ls/miETHq9DhBvlwglG+0jZCSTD3AY/bXkw3vESeLbBjBnZ+N4ANSlWYezG4PCrcQAQBKBkjNIFpP2xN376cW8wAFikuDIZAix1rl3j4T6ij/h/8CQGBpoQc6YXzAAAAAElFTkSuQmCC" />
     </p:Content>
 </Shape>
+
+<Shape id="search" displayName="Search" icon="Icons/search.png">
+    <Properties>
+        <PropertyGroup>
+            <Property name="box" type="Dimension" p:lockHeight="true">300,30</Property>
+            <Property name="radius" displayName="Corner Radius" type="Handle" p:lockY="true" p:minX="0" p:maxX="$box.h / 2" p:noScale="true">4,0</Property>
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Text">
+            <Property name="textContent" displayName="Text Content" type="PlainText"></Property>
+            <Property name="textFont" displayName="Default Font" type="Font"><E>$$textFont</E></Property>
+            <Property name="textColor" displayName="Text Color" type="Color"><E>$$gray</E></Property>
+            <Property name="textAlign" displayName="Text Alignment" type="Alignment">0,1</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Background">
+            <Property name="fillColor" displayName="Color" type="Color"><E>$$neutral</E></Property>
+        </PropertyGroup>
+        <PropertyGroup name="Border">
+            <Property name="strokeColor" displayName="Border Color" type="Color"><E>$$strokeColor</E></Property>
+            <Property name="activeColor" displayName="Active Color" type="Color">#66afe9ff</Property>
+            <Property name="strokeStyle" displayName="Border Style" type="StrokeStyle">1|</Property>
+        </PropertyGroup>
+        <PropertyGroup name="Style">
+            <Property name="position" displayName="Group position" type="Enum"
+                p:enumValues="['none|None', 'left|Left', 'right|Right', 'middle|Middle']">none</Property>
+        </PropertyGroup>
+    </Properties>
+    <Behaviors>
+        <For ref="bg">
+            <Box>$box</Box>
+            <Fill>$fillColor</Fill>
+            <StrokeColor>$strokeColor</StrokeColor>
+            <StrokeStyle>$strokeStyle</StrokeStyle>
+            <Radius>
+                <Arg>15</Arg>
+                <Arg>15</Arg>
+            </Radius>
+        </For>
+        <For ref="magnifier">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 15) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>5</Arg>
+            </Attr>
+        </For>
+        <For ref="text">
+            <Font>$textFont</Font>
+            <Fill>$textColor</Fill>
+            <Color>$textColor</Color>
+            <PlainTextContent>
+                <Arg>$textContent</Arg>
+                <Arg>Bound.fromBox($box, 6, 6)</Arg>
+                <Arg>$textAlign</Arg>
+            </PlainTextContent>
+        </For>
+        <For ref="clear">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 15) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w - 35</Arg>
+            </Attr>
+        </For>
+        <For ref="arrow">
+            <Attr>
+                <Arg>"y"</Arg>
+                <Arg>($box.h - 15) / 2</Arg>
+            </Attr>
+            <Attr>
+                <Arg>"x"</Arg>
+                <Arg>$box.w - 22</Arg>
+            </Attr>
+        </For>
+
+    </Behaviors>
+
+    <p:Content xmlns:p="http://www.evolus.vn/Namespace/Pencil" xmlns="http://www.w3.org/2000/svg">
+        <rect id="bg" />
+        <image id="magnifier" width="15" height="15" x="10" y="6" 
+               xlink:href="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAA4AAAAPCAYAAADUFP50AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAE0SURBVCiRndI/SBxBFMfxzx1nGYuzCMjVFhY2MYaku3RpYn9IxE2xCNelEAvThjSptlnBLUJIMJ0KCgGTLjZaWJgipL8mgqCdxaa4d7IcZzz8wTAzv3nf+fPm1cqyBFleTOA1ljCrr1/4hK1umlyrqFaWpSwvHmIXC0brGC+7adIbGPU4aSegHjpoRuuEN4+9iAUNLOMJ/uBpN03+Vk76kuXFNxzhERLkUMdKBK0PQaCbJudYi+mrm6tWEvH9lvfBYfRzVfBequunHNr/iXse/VkV/Bjjd1leNIeJ8N7H9PPAb6DQ//jHOM3y4g32Y/0FPqCFE5FRqEdFLOp/cgvbuIz2NTx4gKnqVUVFPMMqfuICVzEeeDP4keXFNFFydynLi0kcxOa/0R4LHAFvjg1W4LfY+Af9yF+KLWmwHgAAAABJRU5ErkJggg==" />
+        <text id="text"/>
+        <image id="clear" width="15" height="15" x="10" y="6" 
+               xlink:href="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHaSURBVDiNldQ/TxRhEMfxzy0YjJFg5b8QAQMK9gZLGo00GEkmlkrtC9B3oLVG3oP7VDaAkmhM1EgsrJRELag0IRYmFwnE07PYPVnujlN/1e7kme88+5udqTWbTe1KKY3iGi5jAifxGR+xgocRsdGeV6vCUkoHcRc30d9RZVcNPMDtiNjugKWUjuIRLvSAtOs1rkTE5h9YeaNn/wlqaQ0zEbGdlYE7baAt/OoBqFeep8t8tTzPR/DJrkdbOIVJLGOwkriDeTxXNONEGW9gPMOCvWYPYCIiXiq6Wa+ArkbEUllsqJLTj4UMF9s+oQ8rKaXpiHhVAr9iPiKWU0pTeIpDbXmXMpzr4skQHleAYxGxlFI6p2jU8S45U7U8zxvlbbppE6cj4ntK6QDeY3yfsz8zeztT1Q5ulKC+iPiB6z3O1zOs7wNqeTSJdyml8xUPuwHXMzxpCzYRpUeTCo/OYrUCnC0LVrVay/N8VPHPtH6POo5hRKfZ3xTdf4sNDJfxBiaycvoXKwmD+IA3Ort2BC/K4sOV+GJEbLTG6ZZixloaxmHdNYCxyvtamS+Dco3MtQH/RWuYa62h1s2Ua2QG9xQe9FID9xXbYrMVrP1l087ijGKgvyi8WrLPpv0Nou2s8CP//ewAAAAASUVORK5CYII=" />
+        <image id="arrow" width="15" height="15" x="10" y="6" 
+                       xlink:href=" data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4QgdEBYCbX/RjwAAADpJREFUOMtj/P//PwMlgImBQjAMDGDBJnj27FmsIWtsbMxIHy9gswmbGG0DEdlGXLZTxQWMo0mZcgMAiAcMgySsuVMAAAAASUVORK5CYII=" />
+        
+    </p:Content>
+</Shape>
+
 
 <Shape id="textfield" displayName="Text" icon="Icons/text.png">
     <Properties>
